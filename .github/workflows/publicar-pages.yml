@@ -1,0 +1,72 @@
+name: Publicar Gestão de Faturas no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - gestao-faturas-site.zip
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: publicacao-gestao-faturas
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Obter repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js (apenas no servidor do GitHub)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extrair pacote de publicação
+        run: |
+          test -f gestao-faturas-site.zip
+          mkdir -p webapp
+          unzip -q gestao-faturas-site.zip -d webapp
+          test -f webapp/package.json
+          test -f webapp/public/manifest.webmanifest
+
+      - name: Instalar dependências
+        working-directory: webapp
+        run: npm install --no-audit --no-fund
+
+      - name: Verificar código
+        working-directory: webapp
+        run: npm run lint
+
+      - name: Compilar PWA e verificar ficheiros offline
+        working-directory: webapp
+        run: npm run build
+
+      - name: Confirmar ausência de documentos no site publicado
+        run: |
+          test -f webapp/dist/index.html
+          if find webapp/dist -type f \( -iname '*.pdf' -o -iname '*.xlsx' -o -iname '*.csv' -o -iname '*.jsonl' \) | grep -q .; then
+            echo 'ERRO: Foi encontrado um documento no site publicado.'
+            exit 1
+          fi
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Preparar ficheiros do site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: webapp/dist
+
+      - name: Publicar site
+        id: deployment
+        uses: actions/deploy-pages@v4
