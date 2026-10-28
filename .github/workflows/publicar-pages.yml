@@ -6,6 +6,7 @@ on:
     paths:
       - 'gestao-faturas-site*.zip'
       - '.github/workflows/publicar-pages.yml'
+      - 'scripts/isolar-pwa.py'
   workflow_dispatch:
 
 permissions:
@@ -45,6 +46,9 @@ jobs:
           test -f webapp/package.json
           test -f webapp/public/manifest.webmanifest
 
+      - name: Isolar PWA das outras aplicações do domínio
+        run: python3 scripts/isolar-pwa.py
+
       - name: Instalar dependências
         working-directory: webapp
         run: npm install --no-audit --no-fund
@@ -56,6 +60,24 @@ jobs:
       - name: Compilar PWA e verificar ficheiros offline
         working-directory: webapp
         run: npm run build
+
+      - name: Confirmar identidade PWA e âmbito próprio
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          manifest=json.loads(Path('webapp/dist/manifest.webmanifest').read_text())
+          assert manifest['id']=='/gestaoassinaturas/gestao-faturas-assinaturas-app', manifest['id']
+          assert manifest['start_url']=='/gestaoassinaturas/'
+          assert manifest['scope']=='/gestaoassinaturas/'
+          html=Path('webapp/dist/index.html').read_text()
+          assert 'href="/gestaoassinaturas/manifest.webmanifest"' in html
+          assert "scope: '/gestaoassinaturas/'" in html
+          sw=Path('webapp/dist/sw.js').read_text()
+          assert 'gestao-faturas-assinaturas-pages-' in sw
+          assert "requestUrl.pathname.startsWith('/gestaoassinaturas/')" in sw
+          print('Identidade e âmbito da Gestão de Faturas exclusivos: OK')
+          PY
 
       - name: Confirmar ausência de documentos no site publicado
         run: |
