@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - gestao-faturas-site.zip
+      - 'gestao-faturas-site*.zip'
+      - '.github/workflows/publicar-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -33,9 +34,14 @@ jobs:
 
       - name: Extrair pacote de publicação
         run: |
-          test -f gestao-faturas-site.zip
+          pacote=$(find . -maxdepth 1 -type f -name 'gestao-faturas-site*.zip' -print -quit)
+          if [ -z "$pacote" ]; then
+            echo 'ERRO: Não foi encontrado o ZIP de publicação.'
+            exit 1
+          fi
+          echo "A publicar pacote: $pacote"
           mkdir -p webapp
-          unzip -q gestao-faturas-site.zip -d webapp
+          unzip -q "$pacote" -d webapp
           test -f webapp/package.json
           test -f webapp/public/manifest.webmanifest
 
