@@ -48,10 +48,7 @@ finalizer_path = root / "scripts" / "finalize-pages.mjs"
 finalizer = finalizer_path.read_text(encoding="utf-8")
 if "worker.replace('gestao-faturas-v5'" not in finalizer:
     raise SystemExit("Não foi encontrado o finalizador de cache previsto.")
-finalizer = finalizer.replace(
-    "worker.replace('gestao-faturas-v5'",
-    "worker.replace('gestao-faturas-assinaturas-pages-v5'"
-)
+finalizer = finalizer.replace("gestao-faturas-v5", "gestao-faturas-assinaturas-pages-v5")
 finalizer_path.write_text(finalizer, encoding="utf-8")
 
 # Esta aplicação só controla pedidos dentro da pasta própria.
